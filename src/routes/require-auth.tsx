@@ -9,7 +9,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
   const path = usePathname();
-  const bypass = process.env.NODE_ENV === "development" || process.env.NEXT_PUBLIC_BYPASS_AUTH === "true";
+  const bypass = process.env.NEXT_PUBLIC_BYPASS_AUTH === "true";
 
   useEffect(() => {
     if (loading) return;

@@ -1,0 +1,58 @@
+{
+  "name": "Luna - Lead Management",
+  "short_name": "Luna",
+  "description": "Mobilvennlig kundeløsning for leads, kampanjer og statistikk",
+  "theme_color": "#3b82f6",
+  "background_color": "#0b1020",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "start_url": "/leads",
+  "lang": "no",
+  "dir": "ltr",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.svg",
+      "sizes": "any", 
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/globe.svg",
+      "sizes": "540x720",
+      "type": "image/svg+xml",
+      "form_factor": "narrow"
+    }
+  ],
+  "prefer_related_applications": false,
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "shortcuts": [
+    {
+      "name": "Nye leads",
+      "short_name": "Leads",
+      "description": "Se alle nye leads",
+      "url": "/leads",
+      "icons": [{"src": "/logo.svg", "sizes": "96x96"}]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Stats",
+      "description": "Se statistikk og metrics",
+      "url": "/dashboard",
+      "icons": [{"src": "/logo.svg", "sizes": "96x96"}]
+    }
+  ]
+}
+
+

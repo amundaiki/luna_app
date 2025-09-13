@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="no">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Luna – Intel</title>
+    <meta name="theme-color" content="#2563eb" />
+    <style>
+      :root { --bg: #0a0a0a; --fg: #ededed; --muted: #9ca3af; --primary: #2563eb; }
+      html,body{ height:100%; }
+      body{
+        margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        background:var(--bg); color:var(--fg); -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+        display:flex; align-items:center; justify-content:center; padding:24px;
+      }
+      .card{ width:min(720px, 100%); border:1px solid rgb(255 255 255 / 0.08); border-radius:16px; padding:24px; background:rgb(255 255 255 / 0.02); box-shadow:0 10px 30px rgb(0 0 0 / 0.25); }
+      .title{ font-size:20px; font-weight:700; margin:0 0 8px; }
+      .sub{ margin:0 0 16px; color:var(--muted); }
+      .row{ display:grid; gap:12px; grid-template-columns: 1fr; }
+      .kpi{ display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-radius:12px; background:rgb(255 255 255 / 0.04); border:1px solid rgb(255 255 255 / 0.06); }
+      .kpi b{ font-size:14px; }
+      .kpi span{ color:var(--muted); }
+      .mt{ margin-top:16px; }
+      .btns{ display:flex; gap:10px; flex-wrap:wrap; }
+      .btn{ appearance:none; border:1px solid rgb(255 255 255 / 0.12); background:rgb(37 99 235 / 0.1); color:#dbeafe; padding:10px 14px; border-radius:10px; text-decoration:none; font-weight:600; }
+      .btn:hover{ background:rgb(37 99 235 / 0.2); }
+      .muted{ color:var(--muted); font-size:14px; }
+    </style>
+  </head>
+  <body>
+    <main class="card" role="main">
+      <h1 class="title">Luna – Intel</h1>
+      <p class="sub">Hurtig-oversikt for demo. Dette er en statisk side som kan deles.</p>
+
+      <section class="row" aria-label="Nøkkeltall">
+        <div class="kpi"><b>Nye leads (dag)</b><span>12</span></div>
+        <div class="kpi"><b>Kontaktgrad</b><span>72%</span></div>
+        <div class="kpi"><b>Avtalegrad</b><span>31%</span></div>
+        <div class="kpi"><b>CPL (est.)</b><span>kr 189</span></div>
+      </section>
+
+      <div class="mt btns">
+        <a class="btn" href="/leads">Åpne Leads</a>
+        <a class="btn" href="/dashboard">Åpne Dashboard</a>
+        <a class="btn" href="/campaigns">Åpne Kampanjer</a>
+        <a class="btn" href="/calendar">Åpne Kalender</a>
+      </div>
+      <p class="mt muted">Tips: Del URL-en <code>/intel.html</code> for enkel visning uten innlogging.</p>
+    </main>
+  </body>
+  </html>
+
+

@@ -1,0 +1,3 @@
+/* Minimal toast style for notification demo */
+.toast{position:fixed;top:12px;left:50%;transform:translateX(-50%);background:#111827;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:10px 14px;z-index:9999;box-shadow:0 10px 30px rgba(0,0,0,.3);}
+

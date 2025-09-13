@@ -11,6 +11,7 @@ export default function DemoPage() {
   useEffect(() => {
     async function setupDemo() {
       try {
+        if (!supabase) return;
         // Auto-login med demo bruker
         const { error } = await supabase.auth.signInWithPassword({
           email: 'demo@luna.no',

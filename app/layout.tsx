@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/src/providers/query-provider";
 import { SupabaseProvider } from "@/src/providers/supabase-provider";
+import { AuthProvider } from "@/src/providers/auth-provider";
 import { RoleProvider } from "@/src/providers/role-provider";
 import { ThemeProvider } from "@/src/providers/theme-provider";
 import { Toaster } from "@/src/components/ui/toast";
@@ -47,11 +48,13 @@ export default function RootLayout({
         <ErrorBoundary>
           <QueryProvider>
             <SupabaseProvider>
-              <RoleProvider>
-                <ThemeProvider>
-                  {children}
-                </ThemeProvider>
-              </RoleProvider>
+              <AuthProvider>
+                <RoleProvider>
+                  <ThemeProvider>
+                    {children}
+                  </ThemeProvider>
+                </RoleProvider>
+              </AuthProvider>
             </SupabaseProvider>
           </QueryProvider>
         </ErrorBoundary>

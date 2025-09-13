@@ -6,10 +6,13 @@ import { Bell, User2 } from "lucide-react";
 import { useRole } from "@/src/providers/role-provider";
 import { UserRole } from "@/src/types/core";
 import { useTheme } from "@/src/providers/theme-provider";
+import { useAuth } from "@/src/providers/auth-provider";
+import { Button } from "@/src/components/ui/button";
 
 export function Header() {
   const { role, setRole } = useRole();
   const { theme, toggle } = useTheme();
+  const { profile, signOut } = useAuth();
   return (
     <header className="sticky top-0 z-40 w-full border-b border-black/10 glass-effect">
       <div className="mx-auto max-w-screen-lg px-4 h-16 flex items-center justify-between">
@@ -43,12 +46,19 @@ export function Header() {
             <Bell className="size-5" />
             <span className="absolute -top-1 -right-1 w-3 h-3 bg-[var(--color-error)] rounded-full text-[10px] text-white flex items-center justify-center">3</span>
           </button>
-          <button 
-            aria-label="Brukermeny" 
-            className="p-2 rounded-[var(--radius-md)] hover:bg-[var(--color-neutral-light)] transition-all duration-[var(--duration-fast)] active:scale-95"
-          >
-            <User2 className="size-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="text-xs text-foreground/60 hidden sm:block">
+              {profile?.name || ""}
+            </div>
+            <button 
+              aria-label="Brukermeny" 
+              className="p-2 rounded-[var(--radius-md)] hover:bg-[var(--color-neutral-light)] transition-all duration-[var(--duration-fast)] active:scale-95"
+              title={profile?.email || ""}
+            >
+              <User2 className="size-5" />
+            </button>
+            <Button size="sm" variant="outline" onClick={signOut}>Logg ut</Button>
+          </div>
         </div>
       </div>
     </header>

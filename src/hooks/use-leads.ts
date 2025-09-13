@@ -5,12 +5,15 @@ import { useInfiniteQuery, useQueryClient, useMutation } from "@tanstack/react-q
 import { queryKeys } from "@/src/lib/query-keys";
 import type { Lead, LeadStatus, Appointment } from "@/src/types/core";
 import { useSupabase } from "@/src/providers/supabase-provider";
+import { useAuth } from "@/src/providers/auth-provider";
 import { toast } from "sonner";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 interface LeadFilters {
   status?: string;
   search?: string;
+  customer_id?: string;
+  assignee_user_id?: string;
 }
 
 interface LeadsPageResponse {
@@ -48,6 +51,14 @@ async function fetchLeads({
       query = query.eq('status', filters.status);
     }
     
+    if (filters?.customer_id) {
+      query = query.eq('customer_id', filters.customer_id);
+    }
+
+    if (filters?.assignee_user_id) {
+      query = query.eq('assignee_user_id', filters.assignee_user_id);
+    }
+
     if (filters?.search) {
       query = query.or(
         `full_name.ilike.%${filters.search}%,` +
@@ -84,6 +95,7 @@ async function fetchLeads({
       status: row.status as LeadStatus,
       assignee_user_id: row.assignee_user_id,
       attempts: [], // Will be populated separately if needed
+      first_contact_at: row.first_contact_at,
       last_contact_at: row.last_contact_at,
       gdpr_consent: row.gdpr_consent,
       consent_version: row.consent_version,
@@ -106,13 +118,17 @@ async function fetchLeads({
 
 export function useLeads(filters?: LeadFilters) {
   const { supabase } = useSupabase();
+  const { profile } = useAuth();
   
   return useInfiniteQuery({
     queryKey: queryKeys.leads(filters),
     queryFn: ({ pageParam = 0 }) => {
       console.log('Fetching leads with supabase:', !!supabase);
       if (!supabase) throw new Error('Supabase client not available');
-      return fetchLeads({ page: pageParam, supabase, filters });
+      // Scope to customer and optionally to assignee for "mine"
+      const scopedFilters = { ...filters } as LeadFilters & { customer_id?: string; assignee_user_id?: string };
+      if (profile?.customer_id) (scopedFilters as any).customer_id = profile.customer_id;
+      return fetchLeads({ page: pageParam, supabase, filters: scopedFilters });
     },
     getNextPageParam: (last) => last.nextPage ?? undefined,
     initialPageParam: 0,
@@ -133,6 +149,7 @@ export function useLeads(filters?: LeadFilters) {
 
 export function useRealtimeLeads() {
   const { supabase } = useSupabase();
+  const { profile } = useAuth();
   const qc = useQueryClient();
   
   useEffect(() => {
@@ -150,6 +167,9 @@ export function useRealtimeLeads() {
         },
         (payload) => {
           const newLead = payload.new as any;
+          if (profile?.customer_id && newLead.customer_id !== profile.customer_id) {
+            return;
+          }
           
           // Convert to our Lead type
           const lead: Lead = {
@@ -205,6 +225,9 @@ export function useRealtimeLeads() {
         },
         (payload) => {
           const updatedLead = payload.new as any;
+          if (profile?.customer_id && updatedLead.customer_id !== profile.customer_id) {
+            return;
+          }
           
           // Convert to our Lead type
           const lead: Lead = {
@@ -252,7 +275,7 @@ export function useRealtimeLeads() {
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase, qc]);
+  }, [supabase, qc, profile?.customer_id]);
 }
 
 // Supabase API functions for mutations
@@ -425,6 +448,7 @@ export function useUpdateLeadStatus() {
 
 export function useAddLeadAttempt() {
   const { supabase } = useSupabase();
+  const { profile } = useAuth();
   const qc = useQueryClient();
   
   return useMutation({
@@ -434,6 +458,8 @@ export function useAddLeadAttempt() {
       notes?: string;
     }) => {
       if (!supabase) throw new Error('Supabase client not available');
+      if (!profile?.id) throw new Error('Ingen innlogget bruker');
+      // addLeadAttempt uses current user server-side via passed user id
       return addLeadAttempt(leadId, type, supabase, notes);
     },
     onSuccess: (updatedLead) => {

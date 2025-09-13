@@ -67,6 +67,7 @@ export interface Lead {
   status: LeadStatus;
   assignee_user_id: string | null;
   attempts: ContactAttempt[];
+  first_contact_at?: string | null;
   last_contact_at: string | null;
   gdpr_consent: boolean;
   consent_version: string;

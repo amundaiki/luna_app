@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { useCampaigns, useUpdateCampaignStatus } from "@/src/hooks/use-leads";
+import { useState } from "react";
 import { Button } from "@/src/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Badge } from "@/src/components/ui/badge";
 import { NetworkErrorFallback, EmptyStateFallback } from "@/src/components/ui/error-boundary";
+import { CampaignInlineEdit } from "@/src/components/forms/campaign-inline-edit";
 
 function format(n: number) { return new Intl.NumberFormat("no-NO").format(n); }
 
@@ -13,6 +15,7 @@ export default function CampaignsPage() {
   const { data, isLoading, error, refetch, isError } = useCampaigns();
   const updateCampaignStatus = useUpdateCampaignStatus();
   const campaigns = data?.pages?.[0] ?? [];
+  const [editingCampaign, setEditingCampaign] = useState<string | null>(null);
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -94,15 +97,34 @@ export default function CampaignsPage() {
 
             return (
               <Card key={campaign.id} className="relative group">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <CardTitle className="text-base">{campaign.name}</CardTitle>
-                    <Badge variant={getStatusVariant(campaign.status)} size="sm">
-                      {getStatusLabel(campaign.status)}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
+                {editingCampaign === campaign.id ? (
+                  <CardContent className="pt-6">
+                    <CampaignInlineEdit 
+                      campaign={campaign} 
+                      onCancel={() => setEditingCampaign(null)} 
+                    />
+                  </CardContent>
+                ) : (
+                  <>
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <CardTitle className="text-base">{campaign.name}</CardTitle>
+                        <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditingCampaign(campaign.id)}
+                        className="text-xs px-2 py-1 h-auto text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+                      >
+                        Rediger
+                      </Button>
+                          <Badge variant={getStatusVariant(campaign.status)} size="sm">
+                            {getStatusLabel(campaign.status)}
+                          </Badge>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
                   <div className="space-y-3">
                     {/* Budsjett info */}
                     {(campaign.budget_total || campaign.budget_daily) && (
@@ -157,7 +179,9 @@ export default function CampaignsPage() {
                       </select>
                     </div>
                   </div>
-                </CardContent>
+                    </CardContent>
+                  </>
+                )}
               </Card>
             );
           })}

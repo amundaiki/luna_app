@@ -7,12 +7,12 @@ export function getSocket(): Socket {
     const url = process.env.NEXT_PUBLIC_WS_URL || "";
     if (!url) {
       // Dev/demo: fallback til lokal EventEmitter-lignende API
-      // @ts-expect-error simplify mock socket
+      // Simplify mock socket
       socket = {
-        on: () => {},
-        off: () => {},
-        emit: () => {},
-      };
+        on: () => socket,
+        off: () => socket,
+        emit: () => socket,
+      } as any;
       return socket as unknown as Socket;
     }
     socket = io(url, { transports: ["websocket"], autoConnect: true });

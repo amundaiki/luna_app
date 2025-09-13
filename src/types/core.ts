@@ -27,6 +27,26 @@ export interface ContactAttempt {
   success: boolean;
 }
 
+export interface Appointment {
+  id: string;
+  lead_id: string;
+  user_id: string;
+  title: string;
+  description?: string;
+  start_time: string;
+  end_time: string;
+  location?: string;
+  meeting_url?: string;
+  status: 'scheduled' | 'completed' | 'cancelled' | 'no_show';
+  reminder_sent: boolean;
+  ics_uid?: string;
+  calendar_event_id?: string;
+  notes?: string;
+  outcome?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Lead {
   id: string;
   customer_id: string;
@@ -38,8 +58,12 @@ export interface Lead {
   phone: string;
   email: string;
   postal_code: string;
+  address?: string;
+  city?: string;
   service: string;
   message: string;
+  budget_range?: string;
+  preferred_contact_time?: string;
   status: LeadStatus;
   assignee_user_id: string | null;
   attempts: ContactAttempt[];

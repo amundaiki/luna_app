@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { Badge } from "./badge";
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
 import { toast } from "sonner";
 
 export function OfflineIndicator() {
@@ -70,7 +75,7 @@ export function useOnlineStatus() {
 
 // PWA Install prompt
 export function PWAInstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
   useEffect(() => {
@@ -78,7 +83,7 @@ export function PWAInstallPrompt() {
       // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
       // Stash the event so it can be triggered later
-      setDeferredPrompt(e);
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
       // Show the install button
       setShowInstallPrompt(true);
     };

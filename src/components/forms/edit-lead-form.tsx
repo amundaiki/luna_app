@@ -1,32 +1,36 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useCreateLead, useCampaigns, type CreateLeadData } from "@/src/hooks/use-leads";
+import { useUpdateLead, useCampaigns, type UpdateLeadData } from "@/src/hooks/use-leads";
+import type { Lead } from "@/src/types/core";
 import { Input } from "@/src/components/ui/input";
 import { Button } from "@/src/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { toast } from "sonner";
 
-export function AddLeadForm() {
-  const router = useRouter();
-  const createLead = useCreateLead();
+interface EditLeadFormProps {
+  lead: Lead;
+  onCancel: () => void;
+}
+
+export function EditLeadForm({ lead, onCancel }: EditLeadFormProps) {
+  // const router = useRouter();
+  const updateLead = useUpdateLead();
   const { data: campaignsData } = useCampaigns();
   const campaigns = campaignsData?.pages?.[0] ?? [];
 
-  const [formData, setFormData] = useState<CreateLeadData>({
-    campaign_id: '',
-    full_name: '',
-    phone: '',
-    email: '',
-    postal_code: '',
-    address: '',
-    city: '',
-    service: '',
-    message: '',
-    budget_range: '',
-    preferred_contact_time: '',
-    gdpr_consent: false,
+  const [formData, setFormData] = useState<UpdateLeadData>({
+    campaign_id: lead.campaign_id || '',
+    full_name: lead.full_name,
+    phone: lead.phone,
+    email: lead.email,
+    postal_code: lead.postal_code,
+    address: lead.address || '',
+    city: lead.city || '',
+    service: lead.service,
+    message: lead.message || '',
+    budget_range: lead.budget_range || '',
+    preferred_contact_time: lead.preferred_contact_time || '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -34,34 +38,30 @@ export function AddLeadForm() {
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.full_name.trim()) {
+    if (!formData.full_name?.trim()) {
       newErrors.full_name = 'Navn er påkrevd';
     }
 
-    if (!formData.phone.trim()) {
+    if (!formData.phone?.trim()) {
       newErrors.phone = 'Telefonnummer er påkrevd';
     } else if (!/^[\+]?[0-9\s\-\(\)]{8,}$/.test(formData.phone.trim())) {
       newErrors.phone = 'Ugyldig telefonnummer';
     }
 
-    if (!formData.email.trim()) {
+    if (!formData.email?.trim()) {
       newErrors.email = 'E-post er påkrevd';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
       newErrors.email = 'Ugyldig e-postadresse';
     }
 
-    if (!formData.postal_code.trim()) {
+    if (!formData.postal_code?.trim()) {
       newErrors.postal_code = 'Postnummer er påkrevd';
     } else if (!/^\d{4}$/.test(formData.postal_code.trim())) {
       newErrors.postal_code = 'Postnummer må være 4 siffer';
     }
 
-    if (!formData.service.trim()) {
+    if (!formData.service?.trim()) {
       newErrors.service = 'Tjeneste er påkrevd';
-    }
-
-    if (!formData.gdpr_consent) {
-      newErrors.gdpr_consent = 'Du må godta GDPR-samtykke';
     }
 
     setErrors(newErrors);
@@ -77,14 +77,14 @@ export function AddLeadForm() {
     }
 
     try {
-      await createLead.mutateAsync(formData);
-      router.push('/leads');
+      await updateLead.mutateAsync({ leadId: lead.id, leadData: formData });
+      onCancel(); // Close the edit form
     } catch {
       // Error is handled in the mutation
     }
   };
 
-  const handleInputChange = (field: keyof CreateLeadData, value: string | boolean) => {
+  const handleInputChange = (field: keyof UpdateLeadData, value: string | undefined) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
@@ -92,20 +92,20 @@ export function AddLeadForm() {
   };
 
   return (
-    <Card className="max-w-2xl mx-auto">
+    <Card className="w-full">
       <CardHeader>
-        <CardTitle>Legg til nytt lead</CardTitle>
+        <CardTitle>Rediger lead</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Kampanje */}
           <div>
             <label htmlFor="campaign" className="block text-sm font-medium mb-1">
-              Kampanje (valgfritt)
+              Kampanje
             </label>
             <select
               id="campaign"
-              value={formData.campaign_id}
+              value={formData.campaign_id || ''}
               onChange={(e) => handleInputChange('campaign_id', e.target.value)}
               className="w-full border border-black/10 rounded px-3 py-2 bg-background"
             >
@@ -126,10 +126,9 @@ export function AddLeadForm() {
               </label>
               <Input
                 id="full_name"
-                value={formData.full_name}
+                value={formData.full_name || ''}
                 onChange={(e) => handleInputChange('full_name', e.target.value)}
                 className={errors.full_name ? 'border-red-500' : ''}
-                placeholder="Skriv inn navn"
               />
               {errors.full_name && (
                 <p className="text-red-500 text-xs mt-1">{errors.full_name}</p>
@@ -142,10 +141,9 @@ export function AddLeadForm() {
               </label>
               <Input
                 id="phone"
-                value={formData.phone}
+                value={formData.phone || ''}
                 onChange={(e) => handleInputChange('phone', e.target.value)}
                 className={errors.phone ? 'border-red-500' : ''}
-                placeholder="+47 123 45 678"
               />
               {errors.phone && (
                 <p className="text-red-500 text-xs mt-1">{errors.phone}</p>
@@ -160,10 +158,9 @@ export function AddLeadForm() {
             <Input
               id="email"
               type="email"
-              value={formData.email}
+              value={formData.email || ''}
               onChange={(e) => handleInputChange('email', e.target.value)}
               className={errors.email ? 'border-red-500' : ''}
-              placeholder="eksempel@epost.no"
             />
             {errors.email && (
               <p className="text-red-500 text-xs mt-1">{errors.email}</p>
@@ -178,10 +175,9 @@ export function AddLeadForm() {
               </label>
               <Input
                 id="postal_code"
-                value={formData.postal_code}
+                value={formData.postal_code || ''}
                 onChange={(e) => handleInputChange('postal_code', e.target.value)}
                 className={errors.postal_code ? 'border-red-500' : ''}
-                placeholder="0123"
                 maxLength={4}
               />
               {errors.postal_code && (
@@ -195,9 +191,8 @@ export function AddLeadForm() {
               </label>
               <Input
                 id="city"
-                value={formData.city}
+                value={formData.city || ''}
                 onChange={(e) => handleInputChange('city', e.target.value)}
-                placeholder="Oslo"
               />
             </div>
 
@@ -207,9 +202,8 @@ export function AddLeadForm() {
               </label>
               <Input
                 id="address"
-                value={formData.address}
+                value={formData.address || ''}
                 onChange={(e) => handleInputChange('address', e.target.value)}
-                placeholder="Gateadresse 123"
               />
             </div>
           </div>
@@ -221,7 +215,7 @@ export function AddLeadForm() {
             </label>
             <select
               id="service"
-              value={formData.service}
+              value={formData.service || ''}
               onChange={(e) => handleInputChange('service', e.target.value)}
               className={`w-full border border-black/10 rounded px-3 py-2 bg-background ${
                 errors.service ? 'border-red-500' : ''
@@ -245,7 +239,7 @@ export function AddLeadForm() {
             </label>
             <select
               id="budget_range"
-              value={formData.budget_range}
+              value={formData.budget_range || ''}
               onChange={(e) => handleInputChange('budget_range', e.target.value)}
               className="w-full border border-black/10 rounded px-3 py-2 bg-background"
             >
@@ -263,7 +257,7 @@ export function AddLeadForm() {
             </label>
             <select
               id="preferred_contact_time"
-              value={formData.preferred_contact_time}
+              value={formData.preferred_contact_time || ''}
               onChange={(e) => handleInputChange('preferred_contact_time', e.target.value)}
               className="w-full border border-black/10 rounded px-3 py-2 bg-background"
             >
@@ -281,46 +275,29 @@ export function AddLeadForm() {
             </label>
             <textarea
               id="message"
-              value={formData.message}
+              value={formData.message || ''}
               onChange={(e) => handleInputChange('message', e.target.value)}
               className="w-full border border-black/10 rounded px-3 py-2 bg-background min-h-[100px]"
               placeholder="Tilleggsinformasjon eller kommentarer..."
             />
           </div>
 
-          {/* GDPR samtykke */}
-          <div className="flex items-start gap-2">
-            <input
-              type="checkbox"
-              id="gdpr_consent"
-              checked={formData.gdpr_consent}
-              onChange={(e) => handleInputChange('gdpr_consent', e.target.checked)}
-              className={`mt-0.5 ${errors.gdpr_consent ? 'border-red-500' : ''}`}
-            />
-            <label htmlFor="gdpr_consent" className="text-sm">
-              Jeg samtykker til at mine personopplysninger lagres og behandles i henhold til GDPR-regelverket. *
-            </label>
-          </div>
-          {errors.gdpr_consent && (
-            <p className="text-red-500 text-xs">{errors.gdpr_consent}</p>
-          )}
-
           {/* Handlingsknapper */}
           <div className="flex gap-3 pt-4">
             <Button 
               type="button" 
               variant="outline" 
-              onClick={() => router.push('/leads')}
-              disabled={createLead.isPending}
+              onClick={onCancel}
+              disabled={updateLead.isPending}
             >
               Avbryt
             </Button>
             <Button 
               type="submit" 
-              disabled={createLead.isPending}
+              disabled={updateLead.isPending}
               className="bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90"
             >
-              {createLead.isPending ? 'Oppretter...' : 'Opprett lead'}
+              {updateLead.isPending ? 'Lagrer...' : 'Lagre endringer'}
             </Button>
           </div>
         </form>

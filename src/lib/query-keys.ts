@@ -7,7 +7,7 @@ export const queryKeys = {
   metrics: (period: string) => ["metrics", period] as const,
   dashboardMetrics: ["dashboard_metrics"] as const,
   contactAttempts: (leadId: string) => ["contact_attempts", leadId] as const,
-  appointments: ["appointments"] as const,
+  appointments: (leadId?: string) => leadId ? ["appointments", leadId] as const : ["appointments"] as const,
 };
 
 export type LeadListCache = Lead[];

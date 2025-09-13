@@ -62,7 +62,7 @@ export function AddCampaignForm() {
     try {
       await createCampaign.mutateAsync(formData);
       router.push('/campaigns');
-    } catch (error) {
+    } catch {
       // Error is handled in the mutation
     }
   };

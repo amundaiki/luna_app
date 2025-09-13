@@ -143,13 +143,7 @@ export default function LeadsPage() {
                       Sist kontaktet: {new Date(lead.last_contact_at).toLocaleString('no-NO')}
                     </div>
                   )}
-                  <div className="flex items-center justify-between gap-2">
-                    <Link 
-                      href={`/leads/${lead.id}`} 
-                      className="text-[var(--color-primary)] text-sm font-medium hover:underline"
-                    >
-                      Detaljer
-                    </Link>
+                  <div className="flex items-center justify-between gap-2 mt-3">
                     <select
                       className="text-xs border border-black/10 rounded px-2 py-1 bg-background"
                       value={lead.status}
@@ -165,6 +159,14 @@ export default function LeadsPage() {
                         </option>
                       ))}
                     </select>
+                    <Link href={`/leads/${lead.id}`}>
+                      <Button 
+                        size="sm"
+                        className="text-xs bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium shadow-sm"
+                      >
+                        Åpne lead →
+                      </Button>
+                    </Link>
                   </div>
                 </CardContent>
               </Card>

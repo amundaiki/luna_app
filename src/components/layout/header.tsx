@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Bell, User2 } from "lucide-react";
 import { useRole } from "@/src/providers/role-provider";
 import { UserRole } from "@/src/types/core";
@@ -13,7 +14,7 @@ export function Header() {
     <header className="sticky top-0 z-40 w-full border-b border-black/10 glass-effect">
       <div className="mx-auto max-w-screen-lg px-4 h-16 flex items-center justify-between">
         <Link href="/leads" className="font-semibold text-lg flex items-center gap-2 transition-transform duration-[var(--duration-fast)] hover:scale-105 active:scale-95">
-          <img src="/logo.svg" alt="Luna" width={24} height={24} className="transition-transform duration-[var(--duration-fast)]" />
+          <Image src="/logo.svg" alt="Luna" width={24} height={24} className="transition-transform duration-[var(--duration-fast)]" />
           <span className="hidden xs:inline">Luna</span>
         </Link>
         <div className="flex items-center gap-2 md:gap-3">

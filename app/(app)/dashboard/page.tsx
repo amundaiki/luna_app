@@ -135,13 +135,13 @@ function Sparkline({ data }: { data: number[] }) {
   );
 }
 
-function EmptyHint({ show }: { show: boolean }) {
-  if (!show) return null;
-  return (
-    <div className="rounded-md border border-black/10 p-3 bg-white text-sm text-foreground/70">
-      Ingen data ennå. Koble Meta Insights eller importer CSV for å se grafer her.
-    </div>
-  );
-}
+// function EmptyHint({ show }: { show: boolean }) {
+//   if (!show) return null;
+//   return (
+//     <div className="rounded-md border border-black/10 p-3 bg-white text-sm text-foreground/70">
+//       Ingen data ennå. Koble Meta Insights eller importer CSV for å se grafer her.
+//     </div>
+//   );
+// }
 
 

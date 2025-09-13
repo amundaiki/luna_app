@@ -3,9 +3,10 @@
 import { useEffect } from "react";
 import { useInfiniteQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { queryKeys } from "@/src/lib/query-keys";
-import type { Lead, LeadStatus } from "@/src/types/core";
+import type { Lead, LeadStatus, Appointment } from "@/src/types/core";
 import { useSupabase } from "@/src/providers/supabase-provider";
 import { toast } from "sonner";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 interface LeadFilters {
   status?: string;
@@ -24,7 +25,7 @@ async function fetchLeads({
   filters 
 }: { 
   page?: number; 
-  supabase: any;
+  supabase: SupabaseClient;
   filters?: LeadFilters;
 }): Promise<LeadsPageResponse> {
   try {
@@ -57,7 +58,7 @@ async function fetchLeads({
       );
     }
     
-    const { data, error, count } = await query;
+    const { data, error } = await query;
     
     if (error) {
       console.error('Supabase error:', error);
@@ -110,6 +111,7 @@ export function useLeads(filters?: LeadFilters) {
     queryKey: queryKeys.leads(filters),
     queryFn: ({ pageParam = 0 }) => {
       console.log('Fetching leads with supabase:', !!supabase);
+      if (!supabase) throw new Error('Supabase client not available');
       return fetchLeads({ page: pageParam, supabase, filters });
     },
     getNextPageParam: (last) => last.nextPage ?? undefined,
@@ -254,9 +256,9 @@ export function useRealtimeLeads() {
 }
 
 // Supabase API functions for mutations
-async function updateLeadStatus(leadId: string, status: LeadStatus, supabase: any): Promise<Lead> {
+async function updateLeadStatus(leadId: string, status: LeadStatus, supabase: SupabaseClient): Promise<Lead> {
   try {
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       status,
       updated_at: new Date().toISOString(),
     };
@@ -313,7 +315,7 @@ async function updateLeadStatus(leadId: string, status: LeadStatus, supabase: an
 async function addLeadAttempt(
   leadId: string, 
   type: 'call' | 'sms' | 'email' | 'whatsapp', 
-  supabase: any,
+  supabase: SupabaseClient,
   notes?: string
 ): Promise<Lead> {
   try {
@@ -338,7 +340,7 @@ async function addLeadAttempt(
       .update({
         status: 'contacted',
         last_contact_at: new Date().toISOString(),
-        total_attempts: supabase.raw('total_attempts + 1'),
+        // total_attempts increment is handled at database level
         updated_at: new Date().toISOString(),
       })
       .eq('id', leadId)
@@ -386,8 +388,10 @@ export function useUpdateLeadStatus() {
   const qc = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ leadId, status }: { leadId: string; status: LeadStatus }) => 
-      updateLeadStatus(leadId, status, supabase),
+    mutationFn: ({ leadId, status }: { leadId: string; status: LeadStatus }) => {
+      if (!supabase) throw new Error('Supabase client not available');
+      return updateLeadStatus(leadId, status, supabase);
+    },
     onSuccess: (updatedLead) => {
       // Update all lead queries
       qc.setQueriesData(
@@ -428,7 +432,10 @@ export function useAddLeadAttempt() {
       leadId: string; 
       type: 'call' | 'sms' | 'email' | 'whatsapp';
       notes?: string;
-    }) => addLeadAttempt(leadId, type, supabase, notes),
+    }) => {
+      if (!supabase) throw new Error('Supabase client not available');
+      return addLeadAttempt(leadId, type, supabase, notes);
+    },
     onSuccess: (updatedLead) => {
       // Update all lead queries
       qc.setQueriesData(
@@ -458,7 +465,7 @@ export function useAddLeadAttempt() {
 }
 
 // API function for creating a new lead
-async function createLead(leadData: CreateLeadData, supabase: any): Promise<Lead> {
+async function createLead(leadData: CreateLeadData, supabase: SupabaseClient): Promise<Lead> {
   try {
     const { data, error } = await supabase
       .from('leads')
@@ -535,12 +542,29 @@ export interface CreateLeadData {
   gdpr_consent: boolean;
 }
 
+export interface UpdateLeadData {
+  campaign_id?: string;
+  full_name?: string;
+  phone?: string;
+  email?: string;
+  postal_code?: string;
+  address?: string;
+  city?: string;
+  service?: string;
+  message?: string;
+  budget_range?: string;
+  preferred_contact_time?: string;
+}
+
 export function useCreateLead() {
   const { supabase } = useSupabase();
   const qc = useQueryClient();
   
   return useMutation({
-    mutationFn: (leadData: CreateLeadData) => createLead(leadData, supabase),
+    mutationFn: (leadData: CreateLeadData) => {
+      if (!supabase) throw new Error('Supabase client not available');
+      return createLead(leadData, supabase);
+    },
     onSuccess: (newLead) => {
       // Update all lead queries by adding the new lead to the first page
       qc.setQueryData(
@@ -577,6 +601,96 @@ export function useCreateLead() {
   });
 }
 
+// API function for updating a lead
+async function updateLead(leadId: string, leadData: UpdateLeadData, supabase: SupabaseClient): Promise<Lead> {
+  try {
+    const { data, error } = await supabase
+      .from('leads')
+      .update({
+        ...leadData,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', leadId)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Feil ved oppdatering av lead: ${error.message}`);
+    }
+
+    // Convert to our Lead type
+    const lead: Lead = {
+      id: data.id,
+      customer_id: data.customer_id,
+      campaign_id: data.campaign_id,
+      adset_id: data.ad_set_id,
+      ad_id: data.ad_id,
+      source: data.source,
+      full_name: data.full_name,
+      phone: data.phone,
+      email: data.email,
+      postal_code: data.postal_code,
+      service: data.service,
+      message: data.message,
+      status: data.status as LeadStatus,
+      assignee_user_id: data.assignee_user_id,
+      attempts: [],
+      last_contact_at: data.last_contact_at,
+      gdpr_consent: data.gdpr_consent,
+      consent_version: data.consent_version,
+      consent_timestamp: data.consent_timestamp,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+    };
+
+    return lead;
+  } catch (error) {
+    console.error('Error updating lead:', error);
+    throw error;
+  }
+}
+
+export function useUpdateLead() {
+  const { supabase } = useSupabase();
+  const qc = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ leadId, leadData }: { leadId: string; leadData: UpdateLeadData }) => {
+      if (!supabase) throw new Error('Supabase client not available');
+      return updateLead(leadId, leadData, supabase);
+    },
+    onSuccess: (updatedLead) => {
+      // Update all lead queries
+      qc.setQueriesData(
+        { queryKey: ['leads'] },
+        (old: { pages: LeadsPageResponse[]; pageParams: unknown[] } | undefined) => {
+          if (!old) return old;
+          const newPages = old.pages.map(page => ({
+            ...page,
+            data: page.data.map(lead => 
+              lead.id === updatedLead.id ? updatedLead : lead
+            )
+          }));
+          return { ...old, pages: newPages };
+        }
+      );
+      
+      // Invalidate dashboard metrics when lead is updated
+      qc.invalidateQueries({ queryKey: queryKeys.dashboardMetrics });
+      
+      toast.success("Lead oppdatert", {
+        description: `${updatedLead.full_name} ble oppdatert`,
+        duration: 5000,
+      });
+    },
+    onError: (error) => {
+      toast.error("Feil ved oppdatering av lead", {
+        description: error.message || "Prøv igjen senere",
+      });
+    },
+  });
+}
+
 // Campaign types and functions
 export interface Campaign {
   id: string;
@@ -597,7 +711,15 @@ export interface CreateCampaignData {
   end_date?: string;
 }
 
-async function fetchCampaigns(supabase: any): Promise<Campaign[]> {
+export interface UpdateCampaignData {
+  name?: string;
+  budget_total?: number;
+  budget_daily?: number;
+  start_date?: string;
+  end_date?: string;
+}
+
+async function fetchCampaigns(supabase: SupabaseClient): Promise<Campaign[]> {
   try {
     const { data, error } = await supabase
       .from('campaigns')
@@ -615,7 +737,7 @@ async function fetchCampaigns(supabase: any): Promise<Campaign[]> {
   }
 }
 
-async function createCampaign(campaignData: CreateCampaignData, supabase: any): Promise<Campaign> {
+async function createCampaign(campaignData: CreateCampaignData, supabase: SupabaseClient): Promise<Campaign> {
   try {
     const { data, error } = await supabase
       .from('campaigns')
@@ -643,11 +765,34 @@ async function createCampaign(campaignData: CreateCampaignData, supabase: any): 
   }
 }
 
-async function updateCampaignStatus(campaignId: string, status: string, supabase: any): Promise<Campaign> {
+async function updateCampaignStatus(campaignId: string, status: string, supabase: SupabaseClient): Promise<Campaign> {
   try {
     const { data, error } = await supabase
       .from('campaigns')
       .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', campaignId)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Feil ved oppdatering av kampanje: ${error.message}`);
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error updating campaign:', error);
+    throw error;
+  }
+}
+
+async function updateCampaign(campaignId: string, campaignData: UpdateCampaignData, supabase: SupabaseClient): Promise<Campaign> {
+  try {
+    const { data, error } = await supabase
+      .from('campaigns')
+      .update({
+        ...campaignData,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', campaignId)
       .select()
       .single();
@@ -668,7 +813,10 @@ export function useCampaigns() {
   
   return useInfiniteQuery({
     queryKey: queryKeys.campaigns,
-    queryFn: () => fetchCampaigns(supabase),
+    queryFn: () => {
+      if (!supabase) throw new Error('Supabase client not available');
+      return fetchCampaigns(supabase);
+    },
     getNextPageParam: () => undefined, // No pagination for campaigns
     initialPageParam: 0,
     enabled: !!supabase,
@@ -686,7 +834,10 @@ export function useCreateCampaign() {
   const qc = useQueryClient();
   
   return useMutation({
-    mutationFn: (campaignData: CreateCampaignData) => createCampaign(campaignData, supabase),
+    mutationFn: (campaignData: CreateCampaignData) => {
+      if (!supabase) throw new Error('Supabase client not available');
+      return createCampaign(campaignData, supabase);
+    },
     onSuccess: (newCampaign) => {
       // Invalidate campaigns query to refetch
       qc.invalidateQueries({ queryKey: queryKeys.campaigns });
@@ -709,14 +860,44 @@ export function useUpdateCampaignStatus() {
   const qc = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ campaignId, status }: { campaignId: string; status: string }) => 
-      updateCampaignStatus(campaignId, status, supabase),
+    mutationFn: ({ campaignId, status }: { campaignId: string; status: string }) => {
+      if (!supabase) throw new Error('Supabase client not available');
+      return updateCampaignStatus(campaignId, status, supabase);
+    },
     onSuccess: (updatedCampaign) => {
       // Invalidate campaigns query to refetch
       qc.invalidateQueries({ queryKey: queryKeys.campaigns });
       
       toast.success("Kampanje oppdatert", {
         description: `Status endret til: ${updatedCampaign.status}`,
+      });
+    },
+    onError: (error) => {
+      toast.error("Feil ved oppdatering av kampanje", {
+        description: error.message || "Prøv igjen senere",
+      });
+    },
+  });
+}
+
+export function useUpdateCampaign() {
+  const { supabase } = useSupabase();
+  const qc = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ campaignId, campaignData }: { campaignId: string; campaignData: UpdateCampaignData }) => {
+      if (!supabase) throw new Error('Supabase client not available');
+      return updateCampaign(campaignId, campaignData, supabase);
+    },
+    onSuccess: (updatedCampaign) => {
+      // Invalidate campaigns query to refetch
+      qc.invalidateQueries({ queryKey: queryKeys.campaigns });
+      
+      // Invalidate dashboard metrics when campaign is updated
+      qc.invalidateQueries({ queryKey: queryKeys.dashboardMetrics });
+      
+      toast.success("Kampanje oppdatert", {
+        description: `${updatedCampaign.name} ble oppdatert`,
       });
     },
     onError: (error) => {
@@ -744,7 +925,7 @@ export interface ContactAttempt {
   };
 }
 
-async function fetchContactAttempts(leadId: string, supabase: any): Promise<ContactAttempt[]> {
+async function fetchContactAttempts(leadId: string, supabase: SupabaseClient): Promise<ContactAttempt[]> {
   try {
     const { data, error } = await supabase
       .from('contact_attempts')
@@ -771,7 +952,10 @@ export function useContactAttempts(leadId: string) {
   
   return useInfiniteQuery({
     queryKey: queryKeys.contactAttempts(leadId),
-    queryFn: () => fetchContactAttempts(leadId, supabase),
+    queryFn: () => {
+      if (!supabase) throw new Error('Supabase client not available');
+      return fetchContactAttempts(leadId, supabase);
+    },
     getNextPageParam: () => undefined,
     initialPageParam: 0,
     enabled: !!supabase && !!leadId,
@@ -794,7 +978,7 @@ export interface DashboardMetrics {
   contactRateByDay: { date: string; rate: number }[];
 }
 
-async function fetchDashboardMetrics(supabase: any): Promise<DashboardMetrics> {
+async function fetchDashboardMetrics(supabase: SupabaseClient): Promise<DashboardMetrics> {
   try {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -825,7 +1009,7 @@ async function fetchDashboardMetrics(supabase: any): Promise<DashboardMetrics> {
     }
 
     // Get contact attempts for contact rate calculation
-    const { data: contactAttempts, error: attemptsError } = await supabase
+    const { error: attemptsError } = await supabase
       .from('contact_attempts')
       .select('id, lead_id, created_at')
       .gte('created_at', last10Days.toISOString());
@@ -835,7 +1019,7 @@ async function fetchDashboardMetrics(supabase: any): Promise<DashboardMetrics> {
     }
 
     const leads = allLeads || [];
-    const attempts = contactAttempts || [];
+    // const attempts = contactAttempts || [];
 
     // Calculate basic metrics
     const leadsToday = leads.filter(lead => 
@@ -923,12 +1107,154 @@ export function useDashboardMetrics() {
   
   return useInfiniteQuery({
     queryKey: queryKeys.dashboardMetrics,
-    queryFn: () => fetchDashboardMetrics(supabase),
+    queryFn: () => {
+      if (!supabase) throw new Error('Supabase client not available');
+      return fetchDashboardMetrics(supabase);
+    },
     getNextPageParam: () => undefined,
     initialPageParam: 0,
     enabled: !!supabase,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 15 * 60 * 1000, // 15 minutes
+  });
+}
+
+// Appointments API functions
+export interface CreateAppointmentData {
+  lead_id: string;
+  title: string;
+  description?: string;
+  start_time: Date;
+  end_time: Date;
+  location?: string;
+  ics_uid?: string;
+}
+
+async function createAppointment(appointmentData: CreateAppointmentData, supabase: SupabaseClient): Promise<Appointment> {
+  try {
+    const { data, error } = await supabase
+      .from('appointments')
+      .insert({
+        lead_id: appointmentData.lead_id,
+        user_id: '22222222-2222-2222-2222-222222222222', // Demo user ID
+        title: appointmentData.title,
+        description: appointmentData.description,
+        start_time: appointmentData.start_time.toISOString(),
+        end_time: appointmentData.end_time.toISOString(),
+        location: appointmentData.location,
+        status: 'scheduled',
+        reminder_sent: false,
+        ics_uid: appointmentData.ics_uid,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Feil ved booking av befaring: ${error.message}`);
+    }
+
+    return {
+      id: data.id,
+      lead_id: data.lead_id,
+      user_id: data.user_id,
+      title: data.title,
+      description: data.description,
+      start_time: data.start_time,
+      end_time: data.end_time,
+      location: data.location,
+      meeting_url: data.meeting_url,
+      status: data.status,
+      reminder_sent: data.reminder_sent,
+      ics_uid: data.ics_uid,
+      calendar_event_id: data.calendar_event_id,
+      notes: data.notes,
+      outcome: data.outcome,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+    };
+  } catch (error) {
+    console.error('Error creating appointment:', error);
+    throw error;
+  }
+}
+
+async function fetchAppointments(leadId: string, supabase: SupabaseClient): Promise<Appointment[]> {
+  try {
+    const { data, error } = await supabase
+      .from('appointments')
+      .select('*')
+      .eq('lead_id', leadId)
+      .order('start_time', { ascending: true });
+
+    if (error) {
+      throw new Error(`Feil ved henting av befaringer: ${error.message}`);
+    }
+
+    return data.map((appointment: any) => ({
+      id: appointment.id,
+      lead_id: appointment.lead_id,
+      user_id: appointment.user_id,
+      title: appointment.title,
+      description: appointment.description,
+      start_time: appointment.start_time,
+      end_time: appointment.end_time,
+      location: appointment.location,
+      meeting_url: appointment.meeting_url,
+      status: appointment.status,
+      reminder_sent: appointment.reminder_sent,
+      ics_uid: appointment.ics_uid,
+      calendar_event_id: appointment.calendar_event_id,
+      notes: appointment.notes,
+      outcome: appointment.outcome,
+      created_at: appointment.created_at,
+      updated_at: appointment.updated_at,
+    }));
+  } catch (error) {
+    console.error('Error fetching appointments:', error);
+    throw error;
+  }
+}
+
+export function useCreateAppointment() {
+  const { supabase } = useSupabase();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateAppointmentData) => {
+      if (!supabase) throw new Error('Supabase client not available');
+      return createAppointment(data, supabase);
+    },
+    onSuccess: (appointment) => {
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments(appointment.lead_id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboardMetrics });
+      queryClient.invalidateQueries({ queryKey: queryKeys.leads() });
+      
+      toast.success("Befaring booket!", {
+        description: `${appointment.title} er lagt til kalenderen`,
+      });
+    },
+    onError: (error: Error) => {
+      toast.error("Kunne ikke booke befaring", {
+        description: error.message || "Prøv igjen senere",
+      });
+    },
+  });
+}
+
+export function useAppointments(leadId: string) {
+  const { supabase } = useSupabase();
+  
+  return useInfiniteQuery({
+    queryKey: queryKeys.appointments(leadId),
+    queryFn: () => {
+      if (!supabase) throw new Error('Supabase client not available');
+      return fetchAppointments(leadId, supabase);
+    },
+    getNextPageParam: () => undefined,
+    initialPageParam: 0,
+    enabled: !!supabase && !!leadId,
+    staleTime: 2 * 60 * 1000, // 2 minutes
   });
 }
 

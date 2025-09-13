@@ -30,10 +30,13 @@ export default function LoginPage() {
     }
     try {
       setIsSending(true);
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== "undefined" ? window.location.origin : "");
+      const normalized = siteUrl.replace(/\/$/, "");
+      const redirectTo = normalized ? `${normalized}/leads` : undefined;
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/leads` : undefined,
+          emailRedirectTo: redirectTo,
         },
       });
       if (error) throw error;

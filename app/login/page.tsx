@@ -30,8 +30,15 @@ export default function LoginPage() {
     }
     try {
       setIsSending(true);
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== "undefined" ? window.location.origin : "");
-      const normalized = siteUrl.replace(/\/$/, "");
+      const runtimeOrigin = typeof window !== "undefined" ? window.location.origin : "";
+      const configured = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
+      const fallbackProd = "https://luna-app-flax.vercel.app"; // fallback hvis localhost oppdages
+      const base = configured
+        ? configured
+        : (runtimeOrigin && !/localhost|127\.0\.0\.1/.test(runtimeOrigin))
+          ? runtimeOrigin.replace(/\/$/, "")
+          : fallbackProd;
+      const normalized = base.replace(/\/$/, "");
       const redirectTo = normalized ? `${normalized}/leads` : undefined;
       const { error } = await supabase.auth.signInWithOtp({
         email,
